@@ -13,6 +13,7 @@ public enum StorageError: Error {
     case encodeData
     case decodeData
     case createFile
+    case directoryUnknown
 }
 
 public class Storage {
@@ -24,12 +25,24 @@ public class Storage {
     public init(options: Options) throws {
         self.options = options
 
-        let url = try fileManager.url(
-            for: options.searchPathDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
+        let url: URL
+
+        switch options.directory {
+        case .searchPath(let searchPathDirectory):
+            url = try fileManager.url(
+                for: searchPathDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            )
+        case .sharedContainer(let appGroupName):
+            guard let containerURL = fileManager.containerURL(
+                forSecurityApplicationGroupIdentifier: appGroupName
+            ) else {
+                throw StorageError.directoryUnknown
+            }
+            url = containerURL
+        }
 
         self.folderUrl = url
             .appendingPathComponent(options.folder, isDirectory: true)
